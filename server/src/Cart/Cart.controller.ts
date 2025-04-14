@@ -47,4 +47,23 @@ export class CartController {
 
     return updatedCart;
   }
+  @UseGuards(AuthGuard('jwt'))
+  @Post('get')
+  async getCartItems(@Req() req: RequestWithUser) {
+    const email = req.user?.email;
+
+    if (!email) {
+      throw new UnauthorizedException('User email not found');
+    }
+
+    const user: User | null = await this.userModel.findOne({ email }).exec();
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const cartItems = await this.cartService.getCartItems(user._id.toString());
+
+    return cartItems;
+  }
 }
