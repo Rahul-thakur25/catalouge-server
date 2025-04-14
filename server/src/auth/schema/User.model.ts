@@ -7,7 +7,6 @@ export interface User extends Document {
   email: string;
   products: Types.ObjectId[];
   password: string;
-
   role: string;
 }
 
