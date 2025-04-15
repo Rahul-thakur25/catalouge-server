@@ -7,14 +7,12 @@ import {
   UnauthorizedException,
   Param,
 } from '@nestjs/common';
-import { Schema } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CartService } from './cart.service';
 import { AuthGuard } from '@nestjs/passport';
 import { RequestWithUser } from 'src/products/RequestDto';
 import { User } from '../auth/schema/User.model';
-import { Cart } from './schema/CartSchema';
 
 @Controller('cart')
 export class CartController {
