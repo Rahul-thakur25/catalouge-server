@@ -4,7 +4,7 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Schema } from 'mongoose';
 import { Cart } from './schema/CartSchema';
 
 @Injectable()
@@ -50,5 +50,34 @@ export class CartService {
       console.error('Error fetching cart items:', error);
       throw new InternalServerErrorException('Failed to fetch cart items');
     }
+  }
+  async removeCartItem(userId: string, productId: string): Promise<string> {
+    const cart = await this.cartModel.findOne({ user: userId });
+
+    if (!cart) {
+      throw new NotFoundException('Cart not found');
+    }
+
+    const productIndex = cart.products.findIndex(
+      (product) => product.productId.toString() === productId, // Convert productId to string for comparison
+    );
+
+    if (productIndex === -1) {
+      throw new NotFoundException('Product not found in cart');
+    }
+
+    const product = cart.products[productIndex];
+    if (product.quantity > 1) {
+      product.quantity -= 1;
+    } else {
+      cart.products.splice(productIndex, 1);
+    }
+    if (cart.products.length === 0) {
+      await this.cartModel.deleteOne({ user: userId });
+    } else {
+      await cart.save();
+    }
+
+    return 'Product removed from cart';
   }
 }

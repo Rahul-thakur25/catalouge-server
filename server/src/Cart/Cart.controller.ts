@@ -5,13 +5,16 @@ import {
   Req,
   Body,
   UnauthorizedException,
+  Param,
 } from '@nestjs/common';
+import { Schema } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CartService } from './cart.service';
 import { AuthGuard } from '@nestjs/passport';
 import { RequestWithUser } from 'src/products/RequestDto';
-import { User } from '../auth/schema/User.model'; // Your User model
+import { User } from '../auth/schema/User.model';
+import { Cart } from './schema/CartSchema';
 
 @Controller('cart')
 export class CartController {
@@ -63,7 +66,35 @@ export class CartController {
     }
 
     const cartItems = await this.cartService.getCartItems(user._id.toString());
+    if (!cartItems) {
+      throw new UnauthorizedException('Nothing in the cart');
+    }
 
     return cartItems;
+  }
+  @UseGuards(AuthGuard('jwt'))
+  @Post('/remove/:productId')
+  async removeCartItem(
+    @Req() req: RequestWithUser,
+    @Param('productId') productId: string,
+  ) {
+    const email = req.user.email;
+    if (!email) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const user = await this.userModel.findOne({ email }).exec();
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const userId = user._id.toString();
+    const message = await this.cartService.removeCartItem(userId, productId); // The service returns a string message
+
+    if (!message) {
+      throw new UnauthorizedException('Product not found in cart');
+    }
+
+    return { message };
   }
 }
