@@ -15,14 +15,17 @@ export class AuthController {
 
   @Post('login')
   async login(@Body() user: registerDto, @Res() res: Response) {
-    const { accessToken } = await this.authService.login(user);
-    res.cookie('refreshToken', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // Set to true in production
-      sameSite: 'strict', // Prevent CSRF
-      path: '/auth/refresh', // Optional: restrict to refresh endpoint
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    const { accessToken, userId } = await this.authService.login(user);
+    res.cookie('accessToken', accessToken, {
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
-    return res.status(200).json({ accessToken });
+    return res
+      .status(200)
+      .json({ message: 'Login successful', userId, accessToken });
+  }
+  @Post('logout')
+  logout(@Res() res: Response) {
+    res.clearCookie('accessToken');
+    return res.status(200).json({ message: 'Logout successful' });
   }
 }

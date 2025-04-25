@@ -60,6 +60,7 @@ export class AuthService {
       );
     }
   }
+
   async login(user: registerDto) {
     try {
       const existingUser = await this.userModel.findOne({ email: user.email });
@@ -74,15 +75,32 @@ export class AuthService {
         throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
       }
 
-      const refreshToken = this.jwtService.sign({
-        email: existingUser.email,
-        role: existingUser.role,
-      });
+      const refreshToken = this.jwtService.sign(
+        {
+          email: existingUser.email,
+          role: existingUser.role,
+        },
+        {
+          expiresIn: '7d',
+        },
+      );
+      const accessToken = this.jwtService.sign(
+        {
+          email: existingUser.email,
+          role: existingUser.role,
+        },
+        {
+          expiresIn: '1d',
+        },
+      );
 
       existingUser.refreshToken = refreshToken;
       await existingUser.save();
 
-      return { accessToken: refreshToken };
+      return {
+        accessToken: accessToken,
+        userId: existingUser._id,
+      };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

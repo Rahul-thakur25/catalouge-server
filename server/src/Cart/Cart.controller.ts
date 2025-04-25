@@ -1,10 +1,12 @@
 import {
   Controller,
   Post,
+  Get,
   UseGuards,
   Req,
   Body,
   UnauthorizedException,
+  ForbiddenException,
   Param,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -14,6 +16,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { RequestWithUser } from 'src/products/RequestDto';
 import { User } from '../auth/schema/User.model';
 
+@UseGuards(AuthGuard('jwt'))
 @Controller('cart')
 export class CartController {
   constructor(
@@ -21,56 +24,57 @@ export class CartController {
     @InjectModel('User') private readonly userModel: Model<User>,
   ) {}
 
-  @UseGuards(AuthGuard('jwt'))
   @Post('add')
   async addToCart(
     @Req() req: RequestWithUser,
     @Body() body: { productId: string },
   ) {
-    const email = req.user?.email;
+    try {
+      console.log('Request body:', body);
+      const email = req.user?.email;
 
-    if (!email) {
-      throw new UnauthorizedException('User email not found');
+      if (!email) {
+        throw new ForbiddenException('User email not found');
+      }
+      const user: User | null = await this.userModel.findOne({ email }).exec();
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+      const { productId } = body;
+      const updatedCart = await this.cartService.addToCart(
+        user._id.toString(),
+        productId,
+      );
+      console.log('Updated cart:', updatedCart);
+      return updatedCart;
+    } catch (error) {
+      console.error('Error adding to cart:', error);
     }
-
-    const user: User | null = await this.userModel.findOne({ email }).exec();
-
-    if (!user) {
-      throw new UnauthorizedException('User not found');
-    }
-
-    const { productId } = body;
-
-    const updatedCart = await this.cartService.addToCart(
-      user._id.toString(),
-      productId,
-    );
-
-    return updatedCart;
   }
-  @UseGuards(AuthGuard('jwt'))
-  @Post('get')
+
+  @Get('get')
   async getCartItems(@Req() req: RequestWithUser) {
-    const email = req.user?.email;
-
-    if (!email) {
-      throw new UnauthorizedException('User email not found');
+    try {
+      const email = req.user?.email;
+      if (!email) {
+        throw new UnauthorizedException('User email not found');
+      }
+      const user: User | null = await this.userModel.findOne({ email }).exec();
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+      const cartItems = await this.cartService.getCartItems(
+        user._id.toString(),
+      );
+      if (!cartItems) {
+        throw new UnauthorizedException('Nothing in the cart');
+      }
+      return cartItems;
+    } catch (error) {
+      console.error('Error getting cart items:', error);
     }
-
-    const user: User | null = await this.userModel.findOne({ email }).exec();
-
-    if (!user) {
-      throw new UnauthorizedException('User not found');
-    }
-
-    const cartItems = await this.cartService.getCartItems(user._id.toString());
-    if (!cartItems) {
-      throw new UnauthorizedException('Nothing in the cart');
-    }
-
-    return cartItems;
   }
-  @UseGuards(AuthGuard('jwt'))
+
   @Post('/remove/:productId')
   async removeCartItem(
     @Req() req: RequestWithUser,
@@ -87,7 +91,7 @@ export class CartController {
     }
 
     const userId = user._id.toString();
-    const message = await this.cartService.removeCartItem(userId, productId); // The service returns a string message
+    const message = await this.cartService.removeCartItem(userId, productId);
 
     if (!message) {
       throw new UnauthorizedException('Product not found in cart');

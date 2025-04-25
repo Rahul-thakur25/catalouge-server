@@ -59,7 +59,7 @@ export class CartService {
     }
 
     const productIndex = cart.products.findIndex(
-      (product) => product.productId.toString() === productId, // Convert productId to string for comparison
+      (product) => product.productId.toString() === productId,
     );
 
     if (productIndex === -1) {
